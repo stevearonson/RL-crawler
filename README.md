@@ -104,11 +104,11 @@ None
 git clone https://github.com/stevearonson/RL-crawler.git
 ```
 2. Choose how to explore
-    A. Start from scratch
-        1. Read the project instructions: <a href="https://inst.eecs.berkeley.edu/~cs188/fa19/project3/">RL-Crawler</a>
+    1. Start from scratch
+        1. Read the project instructions: https://inst.eecs.berkeley.edu/~cs188/fa19/project3/
         2. Use the project template files in reinforcement.zip to complete the exercises
         
-    B. Start exploring the different games (see Usage)
+    2. Start exploring the different games (see Usage)
 
 
 <!-- USAGE EXAMPLES -->
