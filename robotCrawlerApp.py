@@ -11,6 +11,8 @@ import optparse
 
 from sklearn.model_selection import ParameterGrid
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 def parseOptions():
@@ -89,9 +91,9 @@ if __name__ == '__main__':
     actionFn = lambda state: robotEnvironment.getPossibleActions(state)
 
     param_grid = {
-            'Eps' : [opts.epsilon],
+            'Eps' : [0.2, 0.4, 0.6, 0.8],
             'LR': [0.2, 0.4, 0.6, 0.8],
-            'Disc' : [0.2, 0.4, 0.6, 0.8]
+            'Disc' : [0.1, 0.5, 0.9]
             }
 
     grid = ParameterGrid(param_grid)
@@ -125,4 +127,7 @@ if __name__ == '__main__':
     # convert data log into Pandas DataFrame and display
     cols = ['Episode', 'Step', 'Epsilon', 'LearningRate', 'Discount', 'State', 'Action', 'Next State', 'Reward']
     df = pd.DataFrame(data_log_list, columns=cols)
-    print(df)
+    
+    gdf = df.groupby(['Epsilon', 'LearningRate', 'Discount', 'Episode'])['Reward'].mean().reset_index()
+    sns.catplot(kind='point', x='Episode', y='Reward', col='LearningRate', row='Discount', hue='Epsilon', data=gdf, height=3)
+    plt.show()
