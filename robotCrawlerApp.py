@@ -36,7 +36,7 @@ Created on Mon Mar 30 11:47:12 2020
 
 import qlearningAgents
 import myCrawler
-import optparse
+import argparse
 
 from sklearn.model_selection import ParameterGrid
 import pandas as pd
@@ -45,35 +45,46 @@ import seaborn as sns
 
 
 def parseOptions():
-    optParser = optparse.OptionParser()
-    optParser.add_option('-d', '--discount',action='store',
-                         type='float',dest='discount',default=0.9,
-                         help='Discount on future (default %default)')
-    optParser.add_option('-n', '--noise',action='store',
-                         type='float',dest='noise',default=0.2,
+    """ creates a parser object for storing command line arguments 
+    
+    Parameters
+    ----------
+    None
+        
+    Returns
+    -------
+    args : Namespace object
+        dict like list of command line arguments
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-d', '--discount', action='store', nargs='+',
+                         type=float, dest='discount', default=[0.1, 0.5, 0.9],
+                         help='Discount on future (default  %(default)s)')
+    parser.add_argument('-n', '--noise', action='store',
+                         type=float, dest='noise',default=0.2,
                          metavar="P", help='How often action results in ' +
-                         'unintended direction (default %default)' )
-    optParser.add_option('-e', '--epsilon',action='store',
-                         type='float',dest='epsilon',default=0.8,
-                         metavar="E", help='Chance of taking a random action in q-learning (default %default)')
-    optParser.add_option('-l', '--learningRate',action='store',
-                         type='float',dest='learningRate',default=0.8,
-                         metavar="P", help='TD learning rate (default %default)' )
-    optParser.add_option('-i', '--trainIterations',action='store',
-                         type='int',dest='trainIters',default=1000,
-                         metavar="K", help='Interval of training steps (default %default)')
-    optParser.add_option('-t', '--testIterations',action='store',
-                         type='int',dest='testIters',default=100,
-                         metavar="K", help='Interval of test steps (default %default)')
-    optParser.add_option('-k', '--episodes',action='store',
-                         type='int',dest='episodes',default=20,
-                         metavar="K", help='Number of epsiodes to run (default %default)')
-    optParser.add_option('-q', '--quiet',action='store_true',
-                         dest='quiet',default=False,
+                         'unintended direction (default  %(default)s' )
+    parser.add_argument('-e', '--epsilon', action='store', nargs='+',
+                         type=float, dest='epsilon', default=[0.2, 0.4, 0.6, 0.8],
+                         metavar="E", help='Chance of taking a random action in q-learning (default  %(default)s')
+    parser.add_argument('-l', '--learningRate', action='store', nargs='+',
+                         type=float, dest='learningRate', default=[0.2, 0.4, 0.6, 0.8],
+                         metavar="P", help='TD learning rate (default  %(default)s' )
+    parser.add_argument('-i', '--trainIterations', action='store',
+                         type=int, dest='trainIters', default=1000,
+                         metavar="K", help='Interval of training steps (default  %(default)s')
+    parser.add_argument('-t', '--testIterations', action='store',
+                         type=int, dest='testIters', default=100,
+                         metavar="K", help='Interval of test steps (default  %(default)s')
+    parser.add_argument('-k', '--episodes', action='store',
+                         type=int, dest='episodes', default=20,
+                         metavar="K", help='Number of epsiodes to run (default  %(default)s')
+    parser.add_argument('-q', '--quiet', action='store_true',
+                         dest='quiet', default=False,
                          help='Skip display of any learning episodes')
 
-    opts, args = optParser.parse_args()
-    return opts
+    args = parser.parse_args()
+    return args
 
 def runEpisode(iters, robotEnvironment, learner, logEnable, episode, startStep, params):
     """ executes learning iterations on robot by applying actions and 
@@ -144,16 +155,10 @@ if __name__ == '__main__':
 
     actionFn = lambda state: robotEnvironment.getPossibleActions(state)
 
-#    param_grid = {
-#            'Eps' : [0.2, 0.4, 0.6, 0.8],
-#            'LR': [0.2, 0.4, 0.6, 0.8],
-#            'Disc' : [0.1, 0.5, 0.9]
-#            }
-
     param_grid = {
-            'Eps' : [0.5],
-            'LR': [0.8],
-            'Disc' : [0.8]
+            'Eps' : opts.epsilon,
+            'LR': opts.learningRate,
+            'Disc' : opts.discount
             }
 
     grid = ParameterGrid(param_grid)
@@ -176,7 +181,8 @@ if __name__ == '__main__':
             runEpisode(opts.trainIters, robotEnvironment, learner, False, eps, stepCount, params)
             stepCount += opts.trainIters
             learner.stopEpisode()
-            
+ 
+            # halt learning and measure best velocity using current value function           
             learner.setEpsilon(0.0)
             learner.setLearningRate(0.0)
         
