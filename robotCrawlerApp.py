@@ -1,5 +1,34 @@
 # -*- coding: utf-8 -*-
 """
+Robot Crawler Application
+
+Execute learning on a robot crawler by combining the robot, its environment,
+and a learning agent. Each learning cycle is a series of episodes, where each
+each episode contains:
+    Learning steps
+    Testing steps
+
+
+This script accepts setting hyper parameters via the command line including:
+    Learning length controls:
+        Number of episodes
+        Number of learning steps per episode
+        Number of testing steps per episode
+    Learning hyper parameters:
+        Learning Rate
+        Discount
+        Probability of random action (epsilon)
+        
+Hyperparameters can be arrays, in which case a learning cycle will be executed
+for all combinations of parameters. The results will be plotted in a grid 
+for comparisons
+        
+Key Python dependencies:
+    sklearn
+    pandas
+    matplotlib
+    seaborn
+    
 Created on Mon Mar 30 11:47:12 2020
 
 @author: steve
@@ -47,7 +76,32 @@ def parseOptions():
     return opts
 
 def runEpisode(iters, robotEnvironment, learner, logEnable, episode, startStep, params):
-
+    """ executes learning iterations on robot by applying actions and 
+    tracking next state and reward 
+    
+    Parameters
+    ----------
+    iters : int
+        number of actions iterations to perform
+    robotEnvironment : class CrawlingRobotEnvironment
+        initialized robot environment for actions
+    learner : class ReinforcementAgent
+        initialized class for tracking value function for all states
+    logEnable : boolean
+        enables logging of each action step
+    episode : int
+        count of current learning cycle
+    startStep : int
+        current total step count
+    params : class ParameterGrid
+        cointains current hyper parameters for this learning cycle
+        
+    Returns
+    -------
+    data_log_list : list
+        array of lists containing hyperparameters and state action values for 
+        each step. Empty list returned when logEnable=False
+    """
 
     dl_list = []
     for i in range(iters):
@@ -90,10 +144,16 @@ if __name__ == '__main__':
 
     actionFn = lambda state: robotEnvironment.getPossibleActions(state)
 
+#    param_grid = {
+#            'Eps' : [0.2, 0.4, 0.6, 0.8],
+#            'LR': [0.2, 0.4, 0.6, 0.8],
+#            'Disc' : [0.1, 0.5, 0.9]
+#            }
+
     param_grid = {
-            'Eps' : [0.2, 0.4, 0.6, 0.8],
-            'LR': [0.2, 0.4, 0.6, 0.8],
-            'Disc' : [0.1, 0.5, 0.9]
+            'Eps' : [0.5],
+            'LR': [0.8],
+            'Disc' : [0.8]
             }
 
     grid = ParameterGrid(param_grid)
