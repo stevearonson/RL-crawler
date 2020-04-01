@@ -150,7 +150,7 @@ if __name__ == '__main__':
 
     opts = parseOptions()
 
-    robot = myCrawler.CrawlingRobot(None)
+    robot = myCrawler.CrawlingRobot()
     robotEnvironment = myCrawler.CrawlingRobotEnvironment(robot)
 
     actionFn = lambda state: robotEnvironment.getPossibleActions(state)
