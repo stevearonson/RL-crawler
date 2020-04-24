@@ -47,6 +47,14 @@ class QLearningAgent(ReinforcementAgent):
             store QValues as a dictionary using the state,action pair as the key
         """
         self.qvalues = {}
+        
+        """
+            Store model of all learned state and actions
+            Use same dictionary key as QValues, but return next_state and reward
+            model(state, action) -> (next_state, reward)
+        """
+        self.model = {}
+        self.planningSteps = 0
 
     def getQValue(self, state, action):
         """
@@ -63,6 +71,18 @@ class QLearningAgent(ReinforcementAgent):
         
     def setQValue(self, state, action, value):
         self.qvalues[(state, action)] = value
+        
+        
+    def setModel(self, state, action, next_state, reward):
+        self.model[(state, action)] = (next_state, reward)
+
+
+    def getModel(self, state, action):
+        return self.model[(state, action)]
+    
+    
+    def setPlanningSteps(self, steps):
+        self.planningSteps = steps
 
 
     def computeValueFromQValues(self, state):
@@ -149,7 +169,26 @@ class QLearningAgent(ReinforcementAgent):
         next_value = self.getValue(nextState)
         
         new_value = (1 - alpha) * qvalue + alpha * (reward + disc * next_value)
-        self.setQValue(state, action, new_value) 
+        self.setQValue(state, action, new_value)
+        
+        """ update the model using this transition """
+        self.setModel(state, action, nextState, reward)
+        
+        """ planning steps """
+        if (self.planningSteps == 0):
+            return
+        
+        # FIXME - move planning into function.
+        for step in range(self.planningSteps):
+            (mState, mAction) = random.choice(list(self.model))
+            (mNextState, mReward) = self.getModel(mState, mAction)
+
+            qvalue = self.getQValue(mState, mAction)
+            next_value = self.getValue(mNextState)
+        
+            new_value = (1 - alpha) * qvalue + alpha * (mReward + disc * next_value)
+            self.setQValue(mState, mAction, new_value)
+
 
 
     def getPolicy(self, state):

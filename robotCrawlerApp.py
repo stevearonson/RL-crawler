@@ -70,6 +70,9 @@ def parseOptions():
     parser.add_argument('-l', '--learningRate', action='store', nargs='+',
                          type=float, dest='learningRate', default=[0.2, 0.4, 0.6, 0.8],
                          metavar="P", help='TD learning rate (default  %(default)s' )
+    parser.add_argument('-p', '--planningSteps', action='store', nargs='+',
+                         type=int, dest='planningSteps', default=[0],
+                         metavar="P", help='Dyna-Q planning steps (default  %(default)s' )
     parser.add_argument('-i', '--trainIterations', action='store',
                          type=int, dest='trainIters', default=1000,
                          metavar="K", help='Interval of training steps (default  %(default)s')
@@ -137,6 +140,7 @@ def runEpisode(iters, robotEnvironment, learner, logEnable, episode, startStep, 
                       params['Eps'], 
                       params['LR'], 
                       params['Disc'],
+                      params['PSteps'],
                       state,
                       action,
                       nextState,
@@ -158,7 +162,8 @@ if __name__ == '__main__':
     param_grid = {
             'Eps' : opts.epsilon,
             'LR': opts.learningRate,
-            'Disc' : opts.discount
+            'Disc' : opts.discount,
+            'PSteps' : opts.planningSteps
             }
 
     grid = ParameterGrid(param_grid)
@@ -176,6 +181,7 @@ if __name__ == '__main__':
             learner.setEpsilon(params['Eps'])
             learner.setLearningRate(params['LR'])
             learner.setDiscount(params['Disc'])
+            learner.setPlanningSteps(params['PSteps'])
         
             learner.startEpisode()
             runEpisode(opts.trainIters, robotEnvironment, learner, False, eps, stepCount, params)
@@ -191,7 +197,8 @@ if __name__ == '__main__':
             data_log_list.extend(temp)
 
     # convert data log into Pandas DataFrame and display
-    cols = ['Episode', 'Step', 'Epsilon', 'LearningRate', 'Discount', 'State', 'Action', 'Next State', 'Reward']
+    cols = ['Episode', 'Step', 'Epsilon', 'LearningRate', 'Discount',
+            'Planning Steps', 'State', 'Action', 'Next State', 'Reward']
     df = pd.DataFrame(data_log_list, columns=cols)
     
     gdf = df.groupby(['Epsilon', 'LearningRate', 'Discount', 'Episode'])['Reward'].mean().reset_index()
