@@ -191,6 +191,7 @@ if __name__ == '__main__':
             # halt learning and measure best velocity using current value function           
             learner.setEpsilon(0.0)
             learner.setLearningRate(0.0)
+            learner.setPlanningSteps(0)
         
             temp = runEpisode(opts.testIters, robotEnvironment, learner, True, eps, stepCount, params)
             stepCount += opts.testIters

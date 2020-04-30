@@ -12,11 +12,11 @@
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
 
 
-from game import *
+# from game import *
 from learningAgents import ReinforcementAgent
-from featureExtractors import *
+# from featureExtractors import *
 
-import random,util,math
+import random,util
 
 class QLearningAgent(ReinforcementAgent):
     """
@@ -79,6 +79,10 @@ class QLearningAgent(ReinforcementAgent):
 
     def getModel(self, state, action):
         return self.model[(state, action)]
+
+    
+    def getModelKeys(self):
+        return list(self.model)
     
     
     def setPlanningSteps(self, steps):
@@ -152,6 +156,28 @@ class QLearningAgent(ReinforcementAgent):
             action = self.getPolicy(state)
 
         return action
+    
+    
+    def runPlan(self, planningSteps):
+        """
+            run planning steps
+            select a previously visited random state/action
+            update Q values from the model
+        """
+        disc = self.discount
+        alpha = self.alpha
+
+        for step in range(planningSteps):
+            (mState, mAction) = random.choice(self.getModelKeys())
+            (mNextState, mReward) = self.getModel(mState, mAction)
+
+            qvalue = self.getQValue(mState, mAction)
+            next_value = self.getValue(mNextState)
+        
+            new_value = (1 - alpha) * qvalue + alpha * (mReward + disc * next_value)
+            self.setQValue(mState, mAction, new_value)
+
+        
 
     def update(self, state, action, nextState, reward):
         """
@@ -175,20 +201,8 @@ class QLearningAgent(ReinforcementAgent):
         self.setModel(state, action, nextState, reward)
         
         """ planning steps """
-        if (self.planningSteps == 0):
-            return
-        
-        # FIXME - move planning into function.
-        for step in range(self.planningSteps):
-            (mState, mAction) = random.choice(list(self.model))
-            (mNextState, mReward) = self.getModel(mState, mAction)
-
-            qvalue = self.getQValue(mState, mAction)
-            next_value = self.getValue(mNextState)
-        
-            new_value = (1 - alpha) * qvalue + alpha * (mReward + disc * next_value)
-            self.setQValue(mState, mAction, new_value)
-
+        if (self.planningSteps > 0):
+            self.runPlan(self.planningSteps)
 
 
     def getPolicy(self, state):
