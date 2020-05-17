@@ -82,7 +82,7 @@ class CrawlingRobotEnvironment(environment.Environment):
         """
         nextState, reward =  None, None
 
-        oldX,oldY = self.crawlingRobot.getRobotPosition()
+        oldX = self.crawlingRobot.getRobotPosition()
 
         armBucket,handBucket = self.state
         armAngle,handAngle = self.crawlingRobot.getAngles()
@@ -103,13 +103,14 @@ class CrawlingRobotEnvironment(environment.Environment):
             self.crawlingRobot.moveHand(newHandAngle)
             nextState = (armBucket,handBucket-1)
 
-        newX,newY = self.crawlingRobot.getRobotPosition()
+        newX = self.crawlingRobot.getRobotPosition()
+        railFlags = self.crawlingRobot.getRailFlags()
 
         # a simple reward function
         reward = newX - oldX
 
         self.state = nextState
-        return nextState, reward
+        return nextState, reward, railFlags
 
 
     def reset(self):
@@ -128,7 +129,7 @@ class CrawlingRobotEnvironment(environment.Environment):
         handState = self.nHandStates//2
         self.state = armState,handState
         self.crawlingRobot.setAngles(self.armBuckets[armState],self.handBuckets[handState])
-        self.crawlingRobot.positions = [20,self.crawlingRobot.getRobotPosition()[0]]
+        self.crawlingRobot.positions = [self.crawlingRobot.getRobotPosition()]
 
 
 class CrawlingRobot:
@@ -139,25 +140,28 @@ class CrawlingRobot:
         self.armAngle = self.oldArmDegree = 0.0
         self.handAngle = self.oldHandDegree = -PI/6
 
-        self.maxArmAngle = PI/6
-        self.minArmAngle = -PI/6
+        self.maxArmAngle = PI/2
+        self.minArmAngle = 0
 
         self.maxHandAngle = 0
-        self.minHandAngle = -(5.0/6.0) * PI
+        self.minHandAngle = -PI/2
 
 
         ## Robot Body ##
-        self.robotWidth = 80
-        self.robotHeight = 40
-        self.robotPos = (20, 164)
+        self.robotWidth = 30
+        self.robotHeight = 20
+        self.robotPos = 20
+        
+        self.minRailPos = 10
+        self.maxRailPos = 110
 
         ## Robot Arm ##
-        self.armLength = 60
+        self.armLength = 50
 
         ## Robot Hand ##
-        self.handLength = 40
+        self.handLength = 60
 
-        self.positions = [0,0]
+        self.positions = [20]
 
 
     def setAngles(self, armAngle, handAngle):
@@ -182,6 +186,16 @@ class CrawlingRobot:
         """
         return self.robotPos
 
+    def getRailFlags(self):
+        """
+            returns flags indicating whether robot is outside of
+            safe travel region
+        """
+        xPos = self.getRobotPosition()
+        
+        return {'Min' : xPos < self.minRailPos, 
+                'Max' : xPos > self.maxRailPos}
+
     def moveArm(self, newArmAngle):
         """
             move the robot arm to 'newArmAngle'
@@ -192,12 +206,12 @@ class CrawlingRobot:
             raise Exception('Crawling Robot: Arm Raised too low. Careful!')
         disp = self.displacement(self.armAngle, self.handAngle,
                                   newArmAngle, self.handAngle)
-        curXPos = self.robotPos[0]
-        self.robotPos = (curXPos+disp, self.robotPos[1])
+        curXPos = self.robotPos
+        self.robotPos = curXPos+disp
         self.armAngle = newArmAngle
 
         # Position and Velocity Sign Post
-        self.positions.append(self.getRobotPosition()[0])
+        self.positions.append(self.getRobotPosition())
         if len(self.positions) > 100:
             self.positions.pop(0)
 
@@ -211,14 +225,15 @@ class CrawlingRobot:
         if newHandAngle < self.minHandAngle:
             raise Exception('Crawling Robot: Hand Raised too low. Careful!')
         disp = self.displacement(self.armAngle, self.handAngle, self.armAngle, newHandAngle)
-        curXPos = self.robotPos[0]
-        self.robotPos = (curXPos+disp, self.robotPos[1])
+        curXPos = self.robotPos
+        self.robotPos = curXPos+disp
         self.handAngle = newHandAngle
 
         # Position and Velocity Sign Post
-        self.positions.append(self.getRobotPosition()[0])
+        self.positions.append(self.getRobotPosition())
         if len(self.positions) > 100:
             self.positions.pop(0)
+
 
     def getMinAndMaxArmAngles(self):
         """
@@ -227,12 +242,14 @@ class CrawlingRobot:
         """
         return self.minArmAngle, self.maxArmAngle
 
+
     def getMinAndMaxHandAngles(self):
         """
             get the lower- and upper- bound
             for the hand angles returns (min,max) pair
         """
         return self.minHandAngle, self.maxHandAngle
+
 
     def getRotationAngle(self):
         """

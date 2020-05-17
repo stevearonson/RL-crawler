@@ -89,75 +89,154 @@ def parseOptions():
     args = parser.parse_args()
     return args
 
-def runEpisode(iters, robotEnvironment, learner, logEnable, episode, startStep, params):
-    """ executes learning iterations on robot by applying actions and 
-    tracking next state and reward 
+class CrawlerRobot:
     
-    Parameters
-    ----------
-    iters : int
-        number of actions iterations to perform
-    robotEnvironment : class CrawlingRobotEnvironment
-        initialized robot environment for actions
-    learner : class ReinforcementAgent
-        initialized class for tracking value function for all states
-    logEnable : boolean
-        enables logging of each action step
-    episode : int
-        count of current learning cycle
-    startStep : int
-        current total step count
-    params : class ParameterGrid
-        cointains current hyper parameters for this learning cycle
+    
+    def __init__(self):
         
-    Returns
-    -------
-    data_log_list : list
-        array of lists containing hyperparameters and state action values for 
-        each step. Empty list returned when logEnable=False
-    """
+        self.robot = myCrawler.CrawlingRobot()
+        self.robotEnvironment = myCrawler.CrawlingRobotEnvironment(self.robot)
 
-    dl_list = []
-    for i in range(iters):
-
-        state = robotEnvironment.getCurrentState()
-        actions = robotEnvironment.getPossibleActions(state)
-        if len(actions) == 0.0:
-            robotEnvironment.reset()
-            state = robotEnvironment.getCurrentState()
-            actions = robotEnvironment.getPossibleActions(state)
-            print('Reset!')
-
-        action = learner.getAction(state)
-        if action == None:
-            raise Exception('None action returned: Code Not Complete')
-        nextState, reward = robotEnvironment.doAction(action)
-        learner.observeTransition(state, action, nextState, reward)
+        self.actionFn = lambda state: self.robotEnvironment.getPossibleActions(state)
+        
+        self.learner = {}
+        
+        self.direction = 'forward'
+        
+        
+    def runEpisode(self, iters, logEnable, episode, startStep, params):
+        
+        """ executes learning iterations on robot by applying actions and 
+        tracking next state and reward 
+        
+        Parameters
+        ----------
+        iters : int
+            number of actions iterations to perform
+        logEnable : boolean
+            enables logging of each action step
+        episode : int
+            count of current learning cycle
+        startStep : int
+            current total step count
+        params : class ParameterGrid
+            cointains current hyper parameters for this learning cycle
             
-        if logEnable:
-            dl_list.append([eps,
-                      startStep + i, 
-                      params['Eps'], 
-                      params['LR'], 
-                      params['Disc'],
-                      params['PSteps'],
-                      state,
-                      action,
-                      nextState,
-                      reward])
+        Returns
+        -------
+        data_log_list : list
+            array of lists containing hyperparameters and state action values for 
+            each step. Empty list returned when logEnable=False
+        """
     
-    return dl_list
+        dl_list = []
+        
+        """
+            set up direction
+        """
+        for i in range(iters):
+    
+            state = self.robotEnvironment.getCurrentState()
+            actions = self.robotEnvironment.getPossibleActions(state)
+            if len(actions) == 0.0:
+                self.robotEnvironment.reset()
+                state = self.robotEnvironment.getCurrentState()
+                actions = self.robotEnvironment.getPossibleActions(state)
+                print('Reset!')
+    
+    
+            action = self.learner[self.direction].getAction(state)
+            if action == None:
+                raise Exception('None action returned: Code Not Complete')
+    
+            nextState, reward, railFlags = self.robotEnvironment.doAction(action)
+            
+            # invert the reward for the reverse direction
+            if self.direction == 'reverse':
+                reward = -reward
+            
+            self.learner[self.direction].observeTransition(state, action, nextState, reward)
+            
+                
+            if logEnable:
+                dl_list.append([episode,
+                          startStep + i, 
+                          params['Eps'], 
+                          params['LR'], 
+                          params['Disc'],
+                          params['PSteps'],
+                          self.direction,
+                          state,
+                          action,
+                          nextState,
+                          reward])
+        
+            """
+                check if we need to switch direction
+            """
+            if (self.direction == 'forward') and railFlags['Max']:
+                self.direction = 'reverse'
+            elif (self.direction == 'reverse') and railFlags['Min']:
+                self.direction = 'forward'
+        
+        return dl_list
+    
+        
+    def learningCycle(self, opts, params):
 
+        self.robotEnvironment.reset()
+        self.direction = 'forward'
+        
+        self.learner = {
+            'forward' : qlearningAgents.QLearningAgent(actionFn=self.actionFn),
+            'reverse' : qlearningAgents.QLearningAgent(actionFn=self.actionFn)
+        }
+        
+        stepCount = 0
+        data_log_list = []        
+
+    
+        for eps in range(1, opts.episodes+1):
+            # run a learning episode    
+            self.learner['forward'].setEpsilon(params['Eps'])
+            self.learner['forward'].setLearningRate(params['LR'])
+            self.learner['forward'].setDiscount(params['Disc'])
+            self.learner['forward'].setPlanningSteps(params['PSteps'])
+        
+            self.learner['reverse'].setEpsilon(params['Eps'])
+            self.learner['reverse'].setLearningRate(params['LR'])
+            self.learner['reverse'].setDiscount(params['Disc'])
+            self.learner['reverse'].setPlanningSteps(params['PSteps'])
+        
+            self.learner['forward'].startEpisode()
+            self.learner['reverse'].startEpisode()
+
+            self.runEpisode(opts.trainIters, False, eps, stepCount, params)
+            stepCount += opts.trainIters
+
+            self.learner['forward'].stopEpisode()
+            self.learner['reverse'].stopEpisode()
+ 
+            # halt learning and measure best velocity using current value function           
+            self.learner['forward'].setEpsilon(0.0)
+            self.learner['forward'].setLearningRate(0.0)
+            self.learner['forward'].setPlanningSteps(0)
+        
+            self.learner['reverse'].setEpsilon(0.0)
+            self.learner['reverse'].setLearningRate(0.0)
+            self.learner['reverse'].setPlanningSteps(0)
+        
+            temp = self.runEpisode(opts.testIters, True, eps, stepCount, params)
+            
+            stepCount += opts.testIters
+            data_log_list.extend(temp)
+            
+        return data_log_list
 
 
 if __name__ == '__main__':
 
     opts = parseOptions()
-
-    robot = myCrawler.CrawlingRobot()
-    robotEnvironment = myCrawler.CrawlingRobotEnvironment(robot)
-
-    actionFn = lambda state: robotEnvironment.getPossibleActions(state)
 
     param_grid = {
             'Eps' : opts.epsilon,
@@ -168,40 +247,24 @@ if __name__ == '__main__':
 
     grid = ParameterGrid(param_grid)
     data_log_list = []        
+    
+    crawlerRobot = CrawlerRobot()
 
     for params in grid:
-        # reset the robot and the learner
-        robotEnvironment.reset()
-        learner = qlearningAgents.QLearningAgent(actionFn=actionFn)
         
-        stepCount = 0
-    
-        for eps in range(1, opts.episodes+1):
-            # run a learning episode    
-            learner.setEpsilon(params['Eps'])
-            learner.setLearningRate(params['LR'])
-            learner.setDiscount(params['Disc'])
-            learner.setPlanningSteps(params['PSteps'])
-        
-            learner.startEpisode()
-            runEpisode(opts.trainIters, robotEnvironment, learner, False, eps, stepCount, params)
-            stepCount += opts.trainIters
-            learner.stopEpisode()
- 
-            # halt learning and measure best velocity using current value function           
-            learner.setEpsilon(0.0)
-            learner.setLearningRate(0.0)
-            learner.setPlanningSteps(0)
-        
-            temp = runEpisode(opts.testIters, robotEnvironment, learner, True, eps, stepCount, params)
-            stepCount += opts.testIters
-            data_log_list.extend(temp)
+        temp = crawlerRobot.learningCycle(opts, params)
+        data_log_list.extend(temp)
 
     # convert data log into Pandas DataFrame and display
     cols = ['Episode', 'Step', 'Epsilon', 'LearningRate', 'Discount',
-            'Planning Steps', 'State', 'Action', 'Next State', 'Reward']
+            'Planning Steps', 'Direction', 'State', 'Action', 'Next State', 'Reward']
     df = pd.DataFrame(data_log_list, columns=cols)
     
     gdf = df.groupby(['Epsilon', 'LearningRate', 'Discount', 'Episode'])['Reward'].mean().reset_index()
     sns.catplot(kind='point', x='Episode', y='Reward', col='LearningRate', row='Discount', hue='Epsilon', data=gdf, height=3)
+    plt.show()
+    
+    # compare forward and reverse learners
+    gdf = df.groupby(['Epsilon', 'Direction', 'Discount', 'Episode'])['Reward'].mean().reset_index()
+    sns.catplot(kind='point', x='Episode', y='Reward', col='Epsilon', row='Discount', hue='Direction', data=gdf, height=3)
     plt.show()
