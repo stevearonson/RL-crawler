@@ -131,9 +131,6 @@ class CrawlerRobot:
     
         dl_list = []
         
-        """
-            set up direction
-        """
         for i in range(iters):
     
             state = self.robotEnvironment.getCurrentState()
@@ -267,4 +264,18 @@ if __name__ == '__main__':
     # compare forward and reverse learners
     gdf = df.groupby(['Epsilon', 'Direction', 'Discount', 'Episode'])['Reward'].mean().reset_index()
     sns.catplot(kind='point', x='Episode', y='Reward', col='Epsilon', row='Discount', hue='Direction', data=gdf, height=3)
+    plt.show()
+    
+    
+    '''
+        plot the resulting Value function for both forward and reverse learners
+    '''
+    fig, ax = plt.subplots(1, 2, figsize=(12,6))
+    crawlerRobot.learner['forward'].plotQvalues(crawlerRobot.robotEnvironment.nArmStates,
+                        crawlerRobot.robotEnvironment.nHandStates, ax[0])
+    ax[0].set_title('Forward Value function and Policy')
+
+    crawlerRobot.learner['reverse'].plotQvalues(crawlerRobot.robotEnvironment.nArmStates,
+                        crawlerRobot.robotEnvironment.nHandStates, ax[1])
+    ax[1].set_title('Reverse Value function and Policy')
     plt.show()

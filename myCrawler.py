@@ -136,6 +136,32 @@ class CrawlingRobot:
 
     def __init__(self):
 
+        # ORIGINAL CRAWLER DIMENSIONS
+        ## Arm and Hand Degrees ##
+#        self.armAngle = self.oldArmDegree = 0.0
+#        self.handAngle = self.oldHandDegree = -PI/6
+#
+#        self.maxArmAngle = PI/6
+#        self.minArmAngle = -PI/6
+#
+#        self.maxHandAngle = 0
+#        self.minHandAngle = -(5.0 / 6.0) * PI
+#
+#
+#        ## Robot Body ##
+#        self.robotWidth = 80
+#        self.robotHeight = 40
+#        
+#        self.minRailPos = 10
+#        self.maxRailPos = 110
+#
+#        ## Robot Arm ##
+#        self.armLength = 60
+#
+#        ## Robot Hand ##
+#        self.handLength = 40
+
+        # GENE'S CRAWLER DIMENSIONS
         ## Arm and Hand Degrees ##
         self.armAngle = self.oldArmDegree = 0.0
         self.handAngle = self.oldHandDegree = -PI/6
@@ -150,7 +176,6 @@ class CrawlingRobot:
         ## Robot Body ##
         self.robotWidth = 30
         self.robotHeight = 20
-        self.robotPos = 20
         
         self.minRailPos = 10
         self.maxRailPos = 110
@@ -161,6 +186,7 @@ class CrawlingRobot:
         ## Robot Hand ##
         self.handLength = 60
 
+        self.robotPos = 20
         self.positions = [20]
 
 
