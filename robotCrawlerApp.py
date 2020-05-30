@@ -58,23 +58,23 @@ def parseOptions():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--discount', action='store', nargs='+',
-                         type=float, dest='discount', default=[0.1, 0.5, 0.9],
+                         type=float, dest='discount', default=[0.8],
                          help='Discount on future (default  %(default)s)')
     parser.add_argument('-n', '--noise', action='store',
                          type=float, dest='noise',default=0.2,
                          metavar="P", help='How often action results in ' +
                          'unintended direction (default  %(default)s' )
     parser.add_argument('-e', '--epsilon', action='store', nargs='+',
-                         type=float, dest='epsilon', default=[0.2, 0.4, 0.6, 0.8],
+                         type=float, dest='epsilon', default=[0.8],
                          metavar="E", help='Chance of taking a random action in q-learning (default  %(default)s')
     parser.add_argument('-l', '--learningRate', action='store', nargs='+',
-                         type=float, dest='learningRate', default=[0.2, 0.4, 0.6, 0.8],
+                         type=float, dest='learningRate', default=[0.8],
                          metavar="P", help='TD learning rate (default  %(default)s' )
     parser.add_argument('-p', '--planningSteps', action='store', nargs='+',
                          type=int, dest='planningSteps', default=[0],
                          metavar="P", help='Dyna-Q planning steps (default  %(default)s' )
     parser.add_argument('-i', '--trainIterations', action='store',
-                         type=int, dest='trainIters', default=1000,
+                         type=int, dest='trainIters', default=200,
                          metavar="K", help='Interval of training steps (default  %(default)s')
     parser.add_argument('-t', '--testIterations', action='store',
                          type=int, dest='testIters', default=100,
@@ -85,16 +85,27 @@ def parseOptions():
     parser.add_argument('-q', '--quiet', action='store_true',
                          dest='quiet', default=False,
                          help='Skip display of any learning episodes')
-
+    parser.add_argument('-r', '--robot', action='store_true',
+                         dest='useRobot', default=False,
+                         help='Use real robot hardware vs. sim')
+    parser.add_argument('-sl', '--saveLog', action='store_true',
+                         dest='saveLog', default='crawlerLog.csv',
+                         help='Destination for saving log file')
+    parser.add_argument('-sq', '--saveQvalues', action='store_true',
+                         dest='saveQvalues', default='qValues',
+                         help='Base file name for saving Q value matrices')
     args = parser.parse_args()
     return args
 
 class CrawlerRobot:
     
-    
-    def __init__(self):
+    def __init__(self, useRobot):
         
-        self.robot = myCrawler.CrawlingRobot()
+        if useRobot:
+            self.robot = myCrawler.CrawlingRobotGene()
+        else:
+            self.robot = myCrawler.CrawlingRobot()
+            
         self.robotEnvironment = myCrawler.CrawlingRobotEnvironment(self.robot)
 
         self.actionFn = lambda state: self.robotEnvironment.getPossibleActions(state)
@@ -229,6 +240,12 @@ class CrawlerRobot:
             data_log_list.extend(temp)
             
         return data_log_list
+    
+    
+    def saveQValues(self, QVbaseName):
+        self.learner['forward'].saveQvalues(QVbaseName + '-forward.npy')
+        self.learner['reverse'].saveQvalues(QVbaseName + '-reverse.npy')
+        
 
 
 if __name__ == '__main__':
@@ -245,7 +262,7 @@ if __name__ == '__main__':
     grid = ParameterGrid(param_grid)
     data_log_list = []        
     
-    crawlerRobot = CrawlerRobot()
+    crawlerRobot = CrawlerRobot(opts.useRobot)
 
     for params in grid:
         
@@ -257,25 +274,9 @@ if __name__ == '__main__':
             'Planning Steps', 'Direction', 'State', 'Action', 'Next State', 'Reward']
     df = pd.DataFrame(data_log_list, columns=cols)
     
-    gdf = df.groupby(['Epsilon', 'LearningRate', 'Discount', 'Episode'])['Reward'].mean().reset_index()
-    sns.catplot(kind='point', x='Episode', y='Reward', col='LearningRate', row='Discount', hue='Epsilon', data=gdf, height=3)
-    plt.show()
+    if opts.saveLog:
+        df.to_csv(opts.saveLog, index=False)
+        
+    if opts.saveQvalues:
+        crawlerRobot.saveQValues(opts.saveQvalues)
     
-    # compare forward and reverse learners
-    gdf = df.groupby(['Epsilon', 'Direction', 'Discount', 'Episode'])['Reward'].mean().reset_index()
-    sns.catplot(kind='point', x='Episode', y='Reward', col='Epsilon', row='Discount', hue='Direction', data=gdf, height=3)
-    plt.show()
-    
-    
-    '''
-        plot the resulting Value function for both forward and reverse learners
-    '''
-    fig, ax = plt.subplots(1, 2, figsize=(12,6))
-    crawlerRobot.learner['forward'].plotQvalues(crawlerRobot.robotEnvironment.nArmStates,
-                        crawlerRobot.robotEnvironment.nHandStates, ax[0])
-    ax[0].set_title('Forward Value function and Policy')
-
-    crawlerRobot.learner['reverse'].plotQvalues(crawlerRobot.robotEnvironment.nArmStates,
-                        crawlerRobot.robotEnvironment.nHandStates, ax[1])
-    ax[1].set_title('Reverse Value function and Policy')
-    plt.show()

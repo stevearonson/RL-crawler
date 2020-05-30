@@ -241,8 +241,20 @@ class QLearningAgent(ReinforcementAgent):
         for _,row in V.iterrows():
             Vimage[int(row['arm']), int(row['hand'])] = row['Qvalue']
             
-        ax.imshow(Vimage, origin = 'lower')
+        ax.imshow(Vimage, cmap='Oranges', origin = 'lower')
         ax.quiver(V['hand'], V['arm'], V['arrowX'], V['arrowY'])
+        
+
+    def saveQvalues(self, qValueFileName):
+        
+        with open(qValueFileName, 'wb') as f:
+            np.save(f, self.qvalues)
+
+
+    def loadQvalues(self, qValueFileName):
+
+        with open(qValueFileName, 'rb') as f:
+            self.qvalues = np.load(f)
 
 
 

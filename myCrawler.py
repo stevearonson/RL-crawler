@@ -177,8 +177,8 @@ class CrawlingRobot:
         self.robotWidth = 30
         self.robotHeight = 20
         
-        self.minRailPos = 10
-        self.maxRailPos = 110
+        self.minRailPos = 20
+        self.maxRailPos = 200
 
         ## Robot Arm ##
         self.armLength = 50
@@ -320,4 +320,189 @@ class CrawlingRobot:
             return -(x - y * (xOld-x)/(yOld-y)) + math.sqrt(xOld*xOld + yOld*yOld)
 
         raise Exception('Never Should See This!')
+        
+class CrawlingRobotGene:
+
+    def __init__(self):
+        
+        '''
+            import the hardware specific packages
+        '''        
+        self.ServoKit = __import__('adafruit_servokit', fromlist = ['ServoKit'])
+        self.board = __import__('board')
+        self.busio = __import__('busio')
+        self.digitalio = __import__('digitalio')
+        self.adafruit_pca9685 = __import__('adafruit_pca9685')
+        self.adafruit_vl6180x = __import__('adafruit_vl6180x')
+        self.adafruit_ssd1306 = __import__('adafruit_ssd1306')
+        self.Image = __import__('PIL', fromlist = ['Image'])
+        self.ImageDraw = __import__('PIL', fromlist = ['ImageDraw'])
+        self.ImageFont = __import__('PIL', fromlist = ['ImageFont'])
+
+
+        ## Arm and Hand Degrees ##
+        self.armAngle = self.oldArmDegree = 0.0
+        self.handAngle = self.oldHandDegree = -PI/6
+
+        self.maxArmAngle = PI/2
+        self.minArmAngle = 0
+
+        self.maxHandAngle = 0
+        self.minHandAngle = -PI/2
+
+        
+        self.minRailPos = 20
+        self.maxRailPos = 200
+
+        self.positions = [20]
+
+        i2c = self.busio.I2C(self.board.SCL, self.board.SDA)
+        hat = self.adafruit_pca9685.PCA9685(i2c)
+        self.kit = self.ServoKit(channels=16) #, address=0x40, reference_clock_speed=25000000)
+        self.sensor = self.adafruit_vl6180x.VL6180X(i2c)
+
+        # Define the Reset Pin
+        oled_reset = self.digitalio.DigitalInOut(self.board.D12)
+
+        # Change these
+        # to the right size for your display!
+        WIDTH = 128
+        HEIGHT = 32  # Change to 64 if needed
+        BORDER = 5
+
+        spi = self.busio.SPI(self.board.SCK, MOSI=self.board.MOSI)
+        reset_pin = self.digitalio.DigitalInOut(self.board.D12) # any pin!
+        cs_pin = self.digitalio.DigitalInOut(self.board.D5)    # any pin!
+        dc_pin = self.digitalio.DigitalInOut(self.board.D6)    # any pin!
+        self.oled = self.adafruit_ssd1306.SSD1306_SPI(128, 32, spi, dc_pin, reset_pin, cs_pin)
+
+        # Load default font.
+        self.font = self.ImageFont.load_default()
+
+
+    def displayDistance(self):
+        range_mm = self.sensor.range
+        #print("Range: {0}mm".format(range_mm))
+        # Read the light, note this requires specifying a gain value:
+        # - adafruit_vl6180x.ALS_GAIN_1 = 1x
+        # - adafruit_vl6180x.ALS_GAIN_1_25 = 1.25x
+        # - adafruit_vl6180x.ALS_GAIN_1_67 = 1.67x
+        # - adafruit_vl6180x.ALS_GAIN_2_5 = 2.5x
+        # - adafruit_vl6180x.ALS_GAIN_5 = 5x
+        # - adafruit_vl6180x.ALS_GAIN_10 = 10x
+        # - adafruit_vl6180x.ALS_GAIN_20 = 20x
+        # - adafruit_vl6180x.ALS_GAIN_40 = 40x
+        light_lux = self.sensor.read_lux(self.adafruit_vl6180x.ALS_GAIN_1)
+        #print("Light (1x gain): {0}lux".format(light_lux))
+        # Delay for a second.
+        #time.sleep(1.0)
+
+        # Draw Some Text
+        image = self.Image.new("1", (self.oled.width, self.oled.height))
+        # Get drawing object to draw on image.
+        draw = self.ImageDraw.Draw(image)
+        text = "Range: {0}mm".format(range_mm)
+        (font_width, font_height) = self.font.getsize(text)
+        draw.text(
+            (self.oled.width // 2 - font_width // 2, self.oled.height // 2 - font_height // 2),
+            text,
+            font=self.font,
+            fill=255,
+        )
+        # Display image
+        self.oled.image(image)
+        self.oled.show()    
+
+
+    def setAngles(self, armAngle, handAngle):
+        """
+            set the robot's arm and hand angles
+            to the passed in values
+        """
+        self.moveArm(armAngle)
+        self.moveHand(handAngle)
+
+    def getAngles(self):
+        """
+            returns the pair of (armAngle, handAngle)
+        """
+        return self.armAngle, self.handAngle
+
+
+    def getRobotPosition(self):
+        """
+            returns the (x,y) coordinates
+            of the lower-left point of the
+            robot
+        """
+        self.displayDistance()
+        return self.sensor.range
+
+
+    def getRailFlags(self):
+        """
+            returns flags indicating whether robot is outside of
+            safe travel region
+        """
+        xPos = self.getRobotPosition()
+        
+        return {'Min' : xPos < self.minRailPos, 
+                'Max' : xPos > self.maxRailPos}
+
+
+    def moveArm(self, newArmAngle):
+        """
+            move the robot arm to 'newArmAngle'
+        """
+        if newArmAngle > self.maxArmAngle:
+            raise Exception('Crawling Robot: Arm Raised too high. Careful!')
+        if newArmAngle < self.minArmAngle:
+            raise Exception('Crawling Robot: Arm Raised too low. Careful!')
+        self.armAngle = newArmAngle
+        
+        self.kit.servo[0].angle = newArmAngle / 0.01745329252
+        #time.sleep(.1)
+
+        # Position and Velocity Sign Post
+        self.positions.append(self.getRobotPosition())
+        if len(self.positions) > 100:
+            self.positions.pop(0)
+
+    def moveHand(self, newHandAngle):
+        """
+            move the robot hand to 'newArmAngle'
+        """
+
+        if newHandAngle > self.maxHandAngle:
+            raise Exception('Crawling Robot: Hand Raised too high. Careful!')
+        if newHandAngle < self.minHandAngle:
+            raise Exception('Crawling Robot: Hand Raised too low. Careful!')
+        self.handAngle = newHandAngle       
+
+        self.kit.servo[1].angle = abs(newHandAngle / 0.01745329252)
+        #time.sleep(.1)
+
+        # Position and Velocity Sign Post
+        self.positions.append(self.getRobotPosition())
+        if len(self.positions) > 100:
+            self.positions.pop(0)
+
+
+    def getMinAndMaxArmAngles(self):
+        """
+            get the lower- and upper- bound
+            for the arm angles returns (min,max) pair
+        """
+        return self.minArmAngle, self.maxArmAngle
+
+
+    def getMinAndMaxHandAngles(self):
+        """
+            get the lower- and upper- bound
+            for the hand angles returns (min,max) pair
+        """
+        return self.minHandAngle, self.maxHandAngle
+
+
+
 
