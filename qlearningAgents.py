@@ -217,34 +217,6 @@ class QLearningAgent(ReinforcementAgent):
         return self.computeValueFromQValues(state)
 
     
-    def plotQvalues(self, stateX, stateY, ax):
-        df = pd.DataFrame.from_dict(self.qvalues, orient='index')
-        df = df.reset_index()
-        
-        df[['state', 'action']] = pd.DataFrame(df['index'].tolist())
-        df[['arm', 'hand']] = pd.DataFrame(df['state'].tolist())
-        
-        df = df[['arm', 'hand', 'action', 0]]
-        df = df.rename(columns={0 : 'Qvalue'})
-        df = df.sort_values(by=['arm', 'hand', 'action'])
-        
-        # extract the value function from the Q values        
-        V = df[df.groupby(['arm', 'hand'])['Qvalue'].transform(max) == df['Qvalue']]
-        
-        # 
-        arrowDir = pd.DataFrame({'action' : ['arm-up', 'arm-down', 'hand-up', 'hand-down'],
-                                 'arrowX' : [0, 0, 0.3, -0.3],
-                                 'arrowY' : [0.3, -0.3, 0, 0]})
-        V = pd.merge(V, arrowDir, on='action')
-        
-        Vimage = np.zeros((9,13))
-        for _,row in V.iterrows():
-            Vimage[int(row['arm']), int(row['hand'])] = row['Qvalue']
-            
-        ax.imshow(Vimage, cmap='Oranges', origin = 'lower')
-        ax.quiver(V['hand'], V['arm'], V['arrowX'], V['arrowY'])
-        
-
     def saveQvalues(self, qValueFileName):
         
         with open(qValueFileName, 'wb') as f:

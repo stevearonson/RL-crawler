@@ -165,6 +165,19 @@ class CrawlerRobot:
             
             self.learner[self.direction].observeTransition(state, action, nextState, reward)
             
+            if ((startStep + i) % 100) == 0:
+                print(episode,
+                       startStep + i, 
+                       params['Eps'], 
+                       params['LR'], 
+                       params['Disc'],
+                       params['PSteps'],
+                       self.direction,
+                       state,
+                       action,
+                       nextState,
+                       reward)
+        
                 
             if logEnable:
                 dl_list.append([episode,

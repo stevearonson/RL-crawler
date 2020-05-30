@@ -17,6 +17,16 @@ import math
 from math import pi as PI
 import environment
 
+#from adafruit_servokit import ServoKit
+#import board
+#import busio
+#import digitalio
+#import adafruit_pca9685
+#import adafruit_vl6180x
+#import adafruit_ssd1306
+#from PIL import Image, ImageDraw, ImageFont
+
+
 class CrawlingRobotEnvironment(environment.Environment):
 
     def __init__(self, crawlingRobot):
