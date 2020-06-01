@@ -345,9 +345,16 @@ class CrawlingRobotGene:
         self.adafruit_pca9685 = __import__('adafruit_pca9685')
         self.adafruit_vl6180x = __import__('adafruit_vl6180x')
         self.adafruit_ssd1306 = __import__('adafruit_ssd1306')
-        self.Image = __import__('PIL', fromlist = ['Image'])
-        self.ImageDraw = __import__('PIL', fromlist = ['ImageDraw'])
-        self.ImageFont = __import__('PIL', fromlist = ['ImageFont'])
+
+        # use a temp variable to access specific packages
+        _tmp = __import__('PIL', fromlist = ['Image'])
+        self.Image = _tmp.Image
+
+        _tmp = __import__('PIL', fromlist = ['ImageDraw'])
+        self.ImageDraw = _tmp.ImageDraw
+        
+        _tmp = __import__('PIL', fromlist = ['ImageFont'])
+        self.ImageFont = _tmp.ImageFont
 
 
         ## Arm and Hand Degrees ##
