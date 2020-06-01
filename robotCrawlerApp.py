@@ -40,8 +40,6 @@ import argparse
 
 from sklearn.model_selection import ParameterGrid
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 
 def parseOptions():
@@ -88,12 +86,15 @@ def parseOptions():
     parser.add_argument('-r', '--robot', action='store_true',
                          dest='useRobot', default=False,
                          help='Use real robot hardware vs. sim')
-    parser.add_argument('-sl', '--saveLog', action='store_true',
+    parser.add_argument('-sl', '--saveLog', action='store',
                          dest='saveLog', default='crawlerLog.csv',
                          help='Destination for saving log file')
-    parser.add_argument('-sq', '--saveQvalues', action='store_true',
+    parser.add_argument('-sq', '--saveQvalues', action='store',
                          dest='saveQvalues', default='qValues',
                          help='Base file name for saving Q value matrices')
+    parser.add_argument('-lq', '--loadQvalues', action='store',
+                         dest='loadQvalues', default='qValues',
+                         help='Base file name for loading Q value matrices before learning')
     args = parser.parse_args()
     return args
 
@@ -213,9 +214,14 @@ class CrawlerRobot:
             'reverse' : qlearningAgents.QLearningAgent(actionFn=self.actionFn)
         }
         
+        '''
+            initialize the q values from saved files if requested
+        '''
+        if opts.loadQvalues:
+            self.loadQValues(opts.loadQvalues)
+        
         stepCount = 0
         data_log_list = []        
-
     
         for eps in range(1, opts.episodes+1):
             # run a learning episode    
@@ -260,6 +266,11 @@ class CrawlerRobot:
         self.learner['reverse'].saveQvalues(QVbaseName + '-reverse.npy')
         
 
+    def loadQValues(self, QVbaseName):
+        self.learner['forward'].loadQvalues(QVbaseName + '-forward.npy')
+        self.learner['reverse'].loadQvalues(QVbaseName + '-reverse.npy')
+        
+
 
 if __name__ == '__main__':
 
@@ -276,7 +287,7 @@ if __name__ == '__main__':
     data_log_list = []        
     
     crawlerRobot = CrawlerRobot(opts.useRobot)
-
+    
     for params in grid:
         
         temp = crawlerRobot.learningCycle(opts, params)

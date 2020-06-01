@@ -18,8 +18,6 @@ from learningAgents import ReinforcementAgent
 
 import random,util
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 
 
 class QLearningAgent(ReinforcementAgent):
@@ -226,7 +224,7 @@ class QLearningAgent(ReinforcementAgent):
     def loadQvalues(self, qValueFileName):
 
         with open(qValueFileName, 'rb') as f:
-            self.qvalues = np.load(f)
+            self.qvalues = np.load(f, allow_pickle=True).item()
 
 
 
