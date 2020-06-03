@@ -8,27 +8,48 @@ Created on Fri May 29 16:20:28 2020
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 import seaborn as sns
 
-df = pd.read_csv('crawlerLog.csv')
+
+df = pd.read_csv('crawlerLog.csv', converters={'State' : eval, 'Next State' : eval})
 
 gdf = df.groupby(['Epsilon', 'LearningRate', 'Discount', 'Episode'])['Reward'].mean().reset_index()
 sns.catplot(kind='point', x='Episode', y='Reward', col='LearningRate', row='Discount', hue='Epsilon', data=gdf, height=3)
-plt.show()
+plt.show(block=False)
 
 # compare forward and reverse learners
 gdf = df.groupby(['Epsilon', 'Direction', 'Discount', 'Episode'])['Reward'].mean().reset_index()
 sns.catplot(kind='point', x='Episode', y='Reward', col='Epsilon', row='Discount', hue='Direction', data=gdf, height=3)
-plt.show()
-
+plt.show(block=False)
 
 
 
 '''
     plot the resulting Value function for both forward and reverse learners
 '''
+# read in the trained Q value files
+with open('qValues-forward.npy', 'rb') as f:
+    qvaluesForward = np.load(f, allow_pickle=True).item()
 
-def plotQvalues(qValues, stateX, stateY, ax):
+with open('qValues-reverse.npy', 'rb') as f:
+    qvaluesReverse = np.load(f, allow_pickle=True).item()
+
+# seperate the forward and reverse steps from the log file
+forSteps = pd.DataFrame(df[df['Direction'] == 'forward']['State'].tolist())
+forSteps.columns = ['arm', 'hand']
+    
+revSteps = pd.DataFrame(df[df['Direction'] == 'reverse']['State'].tolist())
+revSteps.columns = ['arm', 'hand']
+    
+
+'''
+    Plot the value function and optimal policy
+    Playback the robots steps from the log file
+    By default, this is following the optimal policy
+'''
+
+def plotQvalues(qValues, stateX, stateY, fig, ax):
     df = pd.DataFrame.from_dict(qValues, orient='index')
     df = df.reset_index()
     
@@ -54,18 +75,33 @@ def plotQvalues(qValues, stateX, stateY, ax):
         
     ax.imshow(Vimage, cmap='Oranges', origin = 'lower')
     ax.quiver(V['hand'], V['arm'], V['arrowX'], V['arrowY'])
+
+
+def updateState(row, sdf, stateCircle):
+    '''
+        animation support function
+        updates the cirlce marker location
+    '''
+    stateCircle.set_xdata(sdf['hand'].iloc[row])
+    stateCircle.set_ydata(sdf['arm'].iloc[row])
+    return stateCircle,
     
-
-with open('qValues-forward.npy', 'rb') as f:
-    qvaluesForward = np.load(f, allow_pickle=True).item()
-
-with open('qValues-reverse.npy', 'rb') as f:
-    qvaluesReverse = np.load(f, allow_pickle=True).item()
-
-fig, ax = plt.subplots(1, 2, figsize=(12,6))
-plotQvalues(qvaluesForward, 9, 13, ax[0])
-ax[0].set_title('Forward Value function and Policy')
-
-plotQvalues(qvaluesReverse, 9, 13, ax[1])
-ax[1].set_title('Reverse Value function and Policy')
+def animateStates(qValues, steps, direction):
+    '''
+        make a grid of the value function
+        overlay with the estimated optimal policy
+        play back the steps as recorded in the log file
+    '''
+    fig, ax = plt.subplots(figsize=(8,4))
+    plotQvalues(qValues, 9, 13, fig, ax)
+    ax.set_title(direction + ' Value function and Policy')
+    
+    hc, = ax.plot(steps['hand'], steps['arm'], 
+                  'o', mfc='none', mec='black', markersize=20)
+    FuncAnimation(fig, updateState, frames=len(steps), fargs=(steps, hc), 
+                  repeat=False, blit=True)
+    plt.show(block=False)
+    
+animateStates(qvaluesForward, forSteps, 'Forward')
+animateStates(qvaluesReverse, revSteps, 'Reverse')
 plt.show()
