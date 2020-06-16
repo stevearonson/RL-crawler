@@ -13,6 +13,7 @@ import seaborn as sns
 
 
 df = pd.read_csv('crawlerLog.csv', converters={'State' : eval, 'Next State' : eval})
+df = df[df['LearningMode'] == 'Test']
 
 gdf = df.groupby(['Epsilon', 'LearningRate', 'Discount', 'Episode'])['Reward'].mean().reset_index()
 sns.catplot(kind='point', x='Episode', y='Reward', col='LearningRate', row='Discount', hue='Epsilon', data=gdf, height=3)

@@ -17,15 +17,6 @@ import math
 from math import pi as PI
 import environment
 
-#from adafruit_servokit import ServoKit
-#import board
-#import busio
-#import digitalio
-#import adafruit_pca9685
-#import adafruit_vl6180x
-#import adafruit_ssd1306
-#from PIL import Image, ImageDraw, ImageFont
-
 
 class CrawlingRobotEnvironment(environment.Environment):
 
@@ -139,7 +130,6 @@ class CrawlingRobotEnvironment(environment.Environment):
         handState = self.nHandStates//2
         self.state = armState,handState
         self.crawlingRobot.setAngles(self.armBuckets[armState],self.handBuckets[handState])
-        self.crawlingRobot.positions = [self.crawlingRobot.getRobotPosition()]
 
 
 class CrawlingRobot:
@@ -197,7 +187,6 @@ class CrawlingRobot:
         self.handLength = 60
 
         self.robotPos = 20
-        self.positions = [20]
 
 
     def setAngles(self, armAngle, handAngle):
@@ -246,10 +235,6 @@ class CrawlingRobot:
         self.robotPos = curXPos+disp
         self.armAngle = newArmAngle
 
-        # Position and Velocity Sign Post
-        self.positions.append(self.getRobotPosition())
-        if len(self.positions) > 100:
-            self.positions.pop(0)
 
     def moveHand(self, newHandAngle):
         """
@@ -264,11 +249,6 @@ class CrawlingRobot:
         curXPos = self.robotPos
         self.robotPos = curXPos+disp
         self.handAngle = newHandAngle
-
-        # Position and Velocity Sign Post
-        self.positions.append(self.getRobotPosition())
-        if len(self.positions) > 100:
-            self.positions.pop(0)
 
 
     def getMinAndMaxArmAngles(self):
@@ -307,6 +287,7 @@ class CrawlingRobot:
     def __getCosAndSin(self, angle):
         return math.cos(angle), math.sin(angle)
 
+
     def displacement(self, oldArmDegree, oldHandDegree, armDegree, handDegree):
 
         oldArmCos, oldArmSin = self.__getCosAndSin(oldArmDegree)
@@ -331,14 +312,13 @@ class CrawlingRobot:
 
         raise Exception('Never Should See This!')
         
+
 class CrawlingRobotGene:
 
     def __init__(self):
-        
         '''
             import the hardware specific packages
         '''        
-        self.ServoKit = __import__('adafruit_servokit', fromlist = ['ServoKit'])
         self.board = __import__('board')
         self.busio = __import__('busio')
         self.digitalio = __import__('digitalio')
@@ -347,6 +327,9 @@ class CrawlingRobotGene:
         self.adafruit_ssd1306 = __import__('adafruit_ssd1306')
 
         # use a temp variable to access specific packages
+        _tmp = __import__('adafruit_servokit', fromlist = ['ServoKit'])
+        self.ServoKit = _tmp.ServoKit
+
         _tmp = __import__('PIL', fromlist = ['Image'])
         self.Image = _tmp.Image
 
@@ -371,7 +354,6 @@ class CrawlingRobotGene:
         self.minRailPos = 20
         self.maxRailPos = 200
 
-        self.positions = [20]
 
         i2c = self.busio.I2C(self.board.SCL, self.board.SDA)
         hat = self.adafruit_pca9685.PCA9685(i2c)
@@ -439,6 +421,7 @@ class CrawlingRobotGene:
         self.moveArm(armAngle)
         self.moveHand(handAngle)
 
+
     def getAngles(self):
         """
             returns the pair of (armAngle, handAngle)
@@ -480,10 +463,6 @@ class CrawlingRobotGene:
         self.kit.servo[0].angle = newArmAngle / 0.01745329252
         #time.sleep(.1)
 
-        # Position and Velocity Sign Post
-        self.positions.append(self.getRobotPosition())
-        if len(self.positions) > 100:
-            self.positions.pop(0)
 
     def moveHand(self, newHandAngle):
         """
@@ -498,11 +477,6 @@ class CrawlingRobotGene:
 
         self.kit.servo[1].angle = abs(newHandAngle / 0.01745329252)
         #time.sleep(.1)
-
-        # Position and Velocity Sign Post
-        self.positions.append(self.getRobotPosition())
-        if len(self.positions) > 100:
-            self.positions.pop(0)
 
 
     def getMinAndMaxArmAngles(self):
@@ -519,7 +493,3 @@ class CrawlingRobotGene:
             for the hand angles returns (min,max) pair
         """
         return self.minHandAngle, self.maxHandAngle
-
-
-
-

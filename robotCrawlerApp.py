@@ -93,7 +93,7 @@ def parseOptions():
                          dest='saveQvalues', default='qValues',
                          help='Base file name for saving Q value matrices')
     parser.add_argument('-lq', '--loadQvalues', action='store',
-                         dest='loadQvalues', default='qValues',
+                         dest='loadQvalues', default='',
                          help='Base file name for loading Q value matrices before learning')
     args = parser.parse_args()
     return args
@@ -169,6 +169,7 @@ class CrawlerRobot:
             if ((startStep + i) % 100) == 0:
                 print(episode,
                        startStep + i, 
+                       logEnable,
                        params['Eps'], 
                        params['LR'], 
                        params['Disc'],
@@ -183,6 +184,7 @@ class CrawlerRobot:
             if logEnable:
                 dl_list.append([episode,
                           startStep + i, 
+                          logEnable,
                           params['Eps'], 
                           params['LR'], 
                           params['Disc'],
@@ -238,7 +240,8 @@ class CrawlerRobot:
             self.learner['forward'].startEpisode()
             self.learner['reverse'].startEpisode()
 
-            self.runEpisode(opts.trainIters, False, eps, stepCount, params)
+            temp = self.runEpisode(opts.trainIters, 'Train', eps, stepCount, params)
+            data_log_list.extend(temp)
             stepCount += opts.trainIters
 
             self.learner['forward'].stopEpisode()
@@ -253,8 +256,7 @@ class CrawlerRobot:
             self.learner['reverse'].setLearningRate(0.0)
             self.learner['reverse'].setPlanningSteps(0)
         
-            temp = self.runEpisode(opts.testIters, True, eps, stepCount, params)
-            
+            temp = self.runEpisode(opts.testIters, 'Test', eps, stepCount, params)
             stepCount += opts.testIters
             data_log_list.extend(temp)
             
@@ -294,7 +296,7 @@ if __name__ == '__main__':
         data_log_list.extend(temp)
 
     # convert data log into Pandas DataFrame and display
-    cols = ['Episode', 'Step', 'Epsilon', 'LearningRate', 'Discount',
+    cols = ['Episode', 'Step', 'LearningMode', 'Epsilon', 'LearningRate', 'Discount',
             'Planning Steps', 'Direction', 'State', 'Action', 'Next State', 'Reward']
     df = pd.DataFrame(data_log_list, columns=cols)
     
