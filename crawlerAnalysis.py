@@ -38,10 +38,12 @@ with open('qValues-reverse.npy', 'rb') as f:
 
 # seperate the forward and reverse steps from the log file
 forSteps = pd.DataFrame(df[df['Direction'] == 'forward']['State'].tolist())
-forSteps.columns = ['arm', 'hand']
+if not forSteps.empty:
+    forSteps.columns = ['arm', 'hand']
     
 revSteps = pd.DataFrame(df[df['Direction'] == 'reverse']['State'].tolist())
-revSteps.columns = ['arm', 'hand']
+if not revSteps.empty:
+    revSteps.columns = ['arm', 'hand']
     
 
 '''
@@ -70,7 +72,7 @@ def plotQvalues(qValues, stateX, stateY, fig, ax):
                              'arrowY' : [0.3, -0.3, 0, 0]})
     V = pd.merge(V, arrowDir, on='action')
     
-    Vimage = np.zeros((9,13))
+    Vimage = np.zeros((9,9))
     for _,row in V.iterrows():
         Vimage[int(row['arm']), int(row['hand'])] = row['Qvalue']
         
@@ -103,6 +105,8 @@ def animateStates(qValues, steps, direction):
                   repeat=False, blit=True)
     plt.show(block=False)
     
-animateStates(qvaluesForward, forSteps, 'Forward')
-animateStates(qvaluesReverse, revSteps, 'Reverse')
+if not forSteps.empty:
+    animateStates(qvaluesForward, forSteps, 'Forward')
+if not revSteps.empty:
+    animateStates(qvaluesReverse, revSteps, 'Reverse')
 plt.show()

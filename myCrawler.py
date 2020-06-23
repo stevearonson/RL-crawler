@@ -30,7 +30,7 @@ class CrawlingRobotEnvironment(environment.Environment):
         self.state = None
 
         self.nArmStates = 9
-        self.nHandStates = 13
+        self.nHandStates = 9
 
         # create a list of arm buckets and hand buckets to
         # discretize the state space
@@ -341,14 +341,14 @@ class CrawlingRobotGene:
 
 
         ## Arm and Hand Degrees ##
-        self.armAngle = self.oldArmDegree = 0.0
-        self.handAngle = self.oldHandDegree = -PI/6
+        self.armAngle = self.oldArmDegree = 0
+        self.handAngle = self.oldHandDegree = 0
 
-        self.maxArmAngle = PI/2
+        self.maxArmAngle = 90
         self.minArmAngle = 0
 
-        self.maxHandAngle = 0
-        self.minHandAngle = -PI/2
+        self.maxHandAngle = 90
+        self.minHandAngle = 0
 
         
         self.minRailPos = 20
@@ -460,7 +460,7 @@ class CrawlingRobotGene:
             raise Exception('Crawling Robot: Arm Raised too low. Careful!')
         self.armAngle = newArmAngle
         
-        self.kit.servo[0].angle = newArmAngle / 0.01745329252
+        self.kit.servo[0].angle = newArmAngle
         #time.sleep(.1)
 
 
@@ -475,7 +475,7 @@ class CrawlingRobotGene:
             raise Exception('Crawling Robot: Hand Raised too low. Careful!')
         self.handAngle = newHandAngle       
 
-        self.kit.servo[1].angle = abs(newHandAngle / 0.01745329252)
+        self.kit.servo[1].angle = newHandAngle
         #time.sleep(.1)
 
 
