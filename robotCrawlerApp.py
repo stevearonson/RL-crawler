@@ -56,7 +56,7 @@ def parseOptions():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--discount', action='store', nargs='+',
-                         type=float, dest='discount', default=[0.8],
+                         type=float, dest='discount', default=[0.9],
                          help='Discount on future (default  %(default)s)')
     parser.add_argument('-n', '--noise', action='store',
                          type=float, dest='noise',default=0.2,
@@ -86,6 +86,9 @@ def parseOptions():
     parser.add_argument('-r', '--robot', action='store_true',
                          dest='useRobot', default=False,
                          help='Use real robot hardware vs. sim')
+    parser.add_argument('-s', '--states', action='store', nargs='+',
+                         type=int, dest='states', default=[5, 5],
+                         metavar="K", help='Number of states for each servo (default  %(default)s')
     parser.add_argument('-sl', '--saveLog', action='store',
                          dest='saveLog', default='crawlerLog.csv',
                          help='Destination for saving log file')
@@ -100,14 +103,14 @@ def parseOptions():
 
 class CrawlerRobot:
     
-    def __init__(self, useRobot):
+    def __init__(self, useRobot, numStates):
         
         if useRobot:
             self.robot = myCrawler.CrawlingRobotGene()
         else:
             self.robot = myCrawler.CrawlingRobot()
             
-        self.robotEnvironment = myCrawler.CrawlingRobotEnvironment(self.robot)
+        self.robotEnvironment = myCrawler.CrawlingRobotEnvironment(self.robot, numStates)
 
         self.actionFn = lambda state: self.robotEnvironment.getPossibleActions(state)
         
@@ -215,12 +218,21 @@ class CrawlerRobot:
             'forward' : qlearningAgents.QLearningAgent(actionFn=self.actionFn),
             'reverse' : qlearningAgents.QLearningAgent(actionFn=self.actionFn)
         }
+        self.learner['forward'].setNumStates(opts.states)
+        self.learner['reverse'].setNumStates(opts.states)
         
         '''
             initialize the q values from saved files if requested
+            make sure that current number of states matches with
+            value in saved file
         '''
         if opts.loadQvalues:
             self.loadQValues(opts.loadQvalues)
+            if self.learner['forward'].getNumStates() != opts.states:
+                print('Specified number of states %d,%d does not match loaded qValues %d,%d' % 
+                      (tuple(opts.states) +
+                       tuple(self.learner['forward'].getNumStates())))
+                raise SystemExit
         
         stepCount = 0
         data_log_list = []        
@@ -288,7 +300,7 @@ if __name__ == '__main__':
     grid = ParameterGrid(param_grid)
     data_log_list = []        
     
-    crawlerRobot = CrawlerRobot(opts.useRobot)
+    crawlerRobot = CrawlerRobot(opts.useRobot, opts.states)
     
     for params in grid:
         

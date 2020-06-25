@@ -90,6 +90,14 @@ class QLearningAgent(ReinforcementAgent):
     def setPlanningSteps(self, steps):
         self.planningSteps = steps
 
+        
+    def getNumStates(self):
+        return self.qvalues['numStates']
+
+
+    def setNumStates(self, numStates):
+        self.qvalues['numStates'] = numStates
+
 
     def computeValueFromQValues(self, state):
         """

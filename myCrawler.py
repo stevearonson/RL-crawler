@@ -20,7 +20,7 @@ import environment
 
 class CrawlingRobotEnvironment(environment.Environment):
 
-    def __init__(self, crawlingRobot):
+    def __init__(self, crawlingRobot, numStates):
 
         self.crawlingRobot = crawlingRobot
 
@@ -29,8 +29,7 @@ class CrawlingRobotEnvironment(environment.Environment):
         # degree measurements
         self.state = None
 
-        self.nArmStates = 9
-        self.nHandStates = 9
+        self.nArmStates, self.nHandStates = numStates
 
         # create a list of arm buckets and hand buckets to
         # discretize the state space
@@ -52,6 +51,15 @@ class CrawlingRobotEnvironment(environment.Environment):
           of the crawling robot
         """
         return self.state
+    
+    
+    def getNumStates(self):
+        """
+          Return the current state
+          of the crawling robot
+        """
+        return (self.nArmStates, self.nHandStates)
+   
 
     def getPossibleActions(self, state):
         """

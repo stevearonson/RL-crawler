@@ -13,15 +13,20 @@ import seaborn as sns
 
 
 df = pd.read_csv('crawlerLog.csv', converters={'State' : eval, 'Next State' : eval})
-df = df[df['LearningMode'] == 'Test']
+test_mode = df[df['LearningMode'] == 'Test']
 
-gdf = df.groupby(['Epsilon', 'LearningRate', 'Discount', 'Episode'])['Reward'].mean().reset_index()
-sns.catplot(kind='point', x='Episode', y='Reward', col='LearningRate', row='Discount', hue='Epsilon', data=gdf, height=3)
-plt.show(block=False)
+#gdf = test_mode.groupby(['Epsilon', 'LearningRate', 'Discount', 'Episode'])['Reward'].mean().reset_index()
+#sns.catplot(kind='point', x='Episode', y='Reward', col='LearningRate', row='Discount', hue='Epsilon', data=gdf, height=3)
+#plt.show(block=False)
 
 # compare forward and reverse learners
-gdf = df.groupby(['Epsilon', 'Direction', 'Discount', 'Episode'])['Reward'].mean().reset_index()
-sns.catplot(kind='point', x='Episode', y='Reward', col='Epsilon', row='Discount', hue='Direction', data=gdf, height=3)
+gdf = test_mode.groupby(['LearningRate', 'Direction', 'Discount', 'Episode'])['Reward'].mean().reset_index()
+sns.catplot(kind='point', x='Episode', y='Reward', col='LearningRate', row='Discount', hue='Direction', data=gdf, height=3)
+plt.show(block=False)
+
+#plot the entire log file
+fig, ax = plt.subplots(figsize=(12,8))
+sns.scatterplot(x='Step', y='Reward', hue='LearningMode', style='Direction', data=df, ax=ax)
 plt.show(block=False)
 
 
@@ -37,11 +42,13 @@ with open('qValues-reverse.npy', 'rb') as f:
     qvaluesReverse = np.load(f, allow_pickle=True).item()
 
 # seperate the forward and reverse steps from the log file
-forSteps = pd.DataFrame(df[df['Direction'] == 'forward']['State'].tolist())
+# forSteps = pd.DataFrame(df[df['Direction'] == 'forward']['State'].tolist())
+forSteps = pd.DataFrame(test_mode[test_mode['Direction'] == 'forward']['State'].tolist())
 if not forSteps.empty:
     forSteps.columns = ['arm', 'hand']
     
-revSteps = pd.DataFrame(df[df['Direction'] == 'reverse']['State'].tolist())
+# revSteps = pd.DataFrame(df[df['Direction'] == 'reverse']['State'].tolist())
+revSteps = pd.DataFrame(test_mode[test_mode['Direction'] == 'reverse']['State'].tolist())
 if not revSteps.empty:
     revSteps.columns = ['arm', 'hand']
     
@@ -52,7 +59,10 @@ if not revSteps.empty:
     By default, this is following the optimal policy
 '''
 
-def plotQvalues(qValues, stateX, stateY, fig, ax):
+def plotQvalues(qValues, fig, ax):
+    # extract and save the number of states
+    numArmStates, numHandStates = qValues.pop('numStates')
+
     df = pd.DataFrame.from_dict(qValues, orient='index')
     df = df.reset_index()
     
@@ -72,7 +82,7 @@ def plotQvalues(qValues, stateX, stateY, fig, ax):
                              'arrowY' : [0.3, -0.3, 0, 0]})
     V = pd.merge(V, arrowDir, on='action')
     
-    Vimage = np.zeros((9,9))
+    Vimage = np.zeros((numArmStates, numHandStates))
     for _,row in V.iterrows():
         Vimage[int(row['arm']), int(row['hand'])] = row['Qvalue']
         
@@ -95,8 +105,8 @@ def animateStates(qValues, steps, direction):
         overlay with the estimated optimal policy
         play back the steps as recorded in the log file
     '''
-    fig, ax = plt.subplots(figsize=(8,4))
-    plotQvalues(qValues, 9, 13, fig, ax)
+    fig, ax = plt.subplots(figsize=(12,6))
+    plotQvalues(qValues, fig, ax)
     ax.set_title(direction + ' Value function and Policy')
     
     hc, = ax.plot(steps['hand'], steps['arm'], 
