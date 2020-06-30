@@ -19,6 +19,37 @@ from learningAgents import ReinforcementAgent
 import random,util
 import numpy as np
 
+class StateModel():
+    '''
+        state space reprensetation of the robot
+        for each state, action pair it stores the next state, sum(reward),
+        and count of times this state, action pair was visited
+        To reduce variance in the movement, the model returns the running
+        average of the reward, rather than the last value
+    '''
+    def __init__(self):
+        self.model = {}
+
+
+    def setModel(self, state, action, next_state, reward):
+        if (state, action) in self.model:
+            _, rewardSum, count = self.model[(state, action)]
+            rewardSum += reward
+            count += 1
+            self.model[(state, action)] = (next_state, rewardSum, count)
+            
+        else:
+            self.model[(state, action)] = (next_state, reward, 1)
+
+
+    def getModel(self, state, action):
+        next_state, rewardSum, count = self.model[(state, action)]
+        return (next_state, rewardSum/count)
+
+    
+    def getModelKeys(self):
+        return list(self.model)
+
 
 class QLearningAgent(ReinforcementAgent):
     """
@@ -52,11 +83,34 @@ class QLearningAgent(ReinforcementAgent):
         
         """
             Store model of all learned state and actions
-            Use same dictionary key as QValues, but return next_state and reward
-            model(state, action) -> (next_state, reward)
         """
-        self.model = {}
+        self.model = StateModel()
+        
+        '''
+            command line arguments initialized here
+            updated using class functions
+        '''
         self.planningSteps = 0
+        self.useRewardAvg = False
+
+    '''
+        The following functions set/get learning parameters
+    '''
+    def setPlanningSteps(self, steps):
+        self.planningSteps = steps
+
+        
+    def setUseRewardAvg(self, useRewardAvg):
+        self.useRewardAvg = useRewardAvg
+
+        
+    def getNumStates(self):
+        return self.qvalues['numStates']
+
+
+    def setNumStates(self, numStates):
+        self.qvalues['numStates'] = numStates
+
 
     def getQValue(self, state, action):
         """
@@ -75,29 +129,6 @@ class QLearningAgent(ReinforcementAgent):
         self.qvalues[(state, action)] = value
         
         
-    def setModel(self, state, action, next_state, reward):
-        self.model[(state, action)] = (next_state, reward)
-
-
-    def getModel(self, state, action):
-        return self.model[(state, action)]
-
-    
-    def getModelKeys(self):
-        return list(self.model)
-    
-    
-    def setPlanningSteps(self, steps):
-        self.planningSteps = steps
-
-        
-    def getNumStates(self):
-        return self.qvalues['numStates']
-
-
-    def setNumStates(self, numStates):
-        self.qvalues['numStates'] = numStates
-
 
     def computeValueFromQValues(self, state):
         """
@@ -178,8 +209,8 @@ class QLearningAgent(ReinforcementAgent):
         alpha = self.alpha
 
         for step in range(planningSteps):
-            (mState, mAction) = random.choice(self.getModelKeys())
-            (mNextState, mReward) = self.getModel(mState, mAction)
+            (mState, mAction) = random.choice(self.model.getModelKeys())
+            (mNextState, mReward) = self.model.getModel(mState, mAction)
 
             qvalue = self.getQValue(mState, mAction)
             next_value = self.getValue(mNextState)
@@ -204,11 +235,14 @@ class QLearningAgent(ReinforcementAgent):
         qvalue = self.getQValue(state, action)
         next_value = self.getValue(nextState)
         
+        """ update the model using this transition """
+        self.model.setModel(state, action, nextState, reward)
+        if self.useRewardAvg:
+            _, reward = self.model.getModel(state, action)
+
         new_value = (1 - alpha) * qvalue + alpha * (reward + disc * next_value)
         self.setQValue(state, action, new_value)
         
-        """ update the model using this transition """
-        self.setModel(state, action, nextState, reward)
         
         """ planning steps """
         if (self.planningSteps > 0):
@@ -222,7 +256,12 @@ class QLearningAgent(ReinforcementAgent):
     def getValue(self, state):
         return self.computeValueFromQValues(state)
 
-    
+    '''
+        The next 2 functions save/load the internal Q values for
+        1. offline analysis
+        2. continuing learning from previous run
+        3. demonstrate a pretrained setof values
+    '''    
     def saveQvalues(self, qValueFileName):
         
         with open(qValueFileName, 'wb') as f:

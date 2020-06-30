@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import seaborn as sns
 
-
 df = pd.read_csv('crawlerLog.csv', converters={'State' : eval, 'Next State' : eval})
 test_mode = df[df['LearningMode'] == 'Test']
 
@@ -29,6 +28,26 @@ fig, ax = plt.subplots(figsize=(12,8))
 sns.scatterplot(x='Step', y='Reward', hue='LearningMode', style='Direction', data=df, ax=ax)
 plt.show(block=False)
 
+'''
+    create boxplots of rewards by state,action pair
+
+'''
+fig, ax = plt.subplots(nrows=2, figsize=(12,10))
+forSteps = df[df['Direction'] == 'forward']
+if not forSteps.empty:
+    forSteps.boxplot(column='Reward', by=['State', 'Action'], ax=ax[0])
+    ax[0].tick_params(axis='x', labelrotation=90)
+    plt.suptitle('')
+    ax[0].set_title('Forward Reward Distributions by State/Action')
+
+revSteps = df[df['Direction'] == 'reverse']
+if not revSteps.empty:
+    revSteps.boxplot(column='Reward', by=['State', 'Action'], ax=ax[1])
+    ax[1].tick_params(axis='x', labelrotation=90)
+    plt.suptitle('')
+    ax[1].set_title('Reverse Reward Distributions by State/Action')
+
+plt.tight_layout()
 
 
 '''
@@ -61,8 +80,11 @@ if not revSteps.empty:
 
 def plotQvalues(qValues, fig, ax):
     # extract and save the number of states
-    numArmStates, numHandStates = qValues.pop('numStates')
-
+    if 'numStates' in qValues:
+        numArmStates, numHandStates = qValues.pop('numStates')
+    else:
+        numArmStates, numHandStates = 9, 9
+        
     df = pd.DataFrame.from_dict(qValues, orient='index')
     df = df.reset_index()
     

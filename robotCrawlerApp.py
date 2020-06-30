@@ -40,6 +40,7 @@ import argparse
 
 from sklearn.model_selection import ParameterGrid
 import pandas as pd
+import random
 
 
 def parseOptions():
@@ -58,10 +59,10 @@ def parseOptions():
     parser.add_argument('-d', '--discount', action='store', nargs='+',
                          type=float, dest='discount', default=[0.9],
                          help='Discount on future (default  %(default)s)')
-    parser.add_argument('-n', '--noise', action='store',
-                         type=float, dest='noise',default=0.2,
-                         metavar="P", help='How often action results in ' +
-                         'unintended direction (default  %(default)s' )
+    parser.add_argument('-n', '--noise', action='store', nargs='+',
+                         type=float, dest='noise', default=[0.0],
+                         metavar="P", help='Rewards additive noise standard deviation ' +
+                         '(default  %(default)s' )
     parser.add_argument('-e', '--epsilon', action='store', nargs='+',
                          type=float, dest='epsilon', default=[0.8],
                          metavar="E", help='Chance of taking a random action in q-learning (default  %(default)s')
@@ -98,6 +99,9 @@ def parseOptions():
     parser.add_argument('-lq', '--loadQvalues', action='store',
                          dest='loadQvalues', default='',
                          help='Base file name for loading Q value matrices before learning')
+    parser.add_argument('-ra', '--rewardAvg', action='store_true',
+                         dest='rewardAvg', default=False,
+                         help='Use average rewards vs last value')
     args = parser.parse_args()
     return args
 
@@ -166,6 +170,8 @@ class CrawlerRobot:
             # invert the reward for the reverse direction
             if self.direction == 'reverse':
                 reward = -reward
+                
+            reward = reward + random.normalvariate(0, params['Noise'])
             
             self.learner[self.direction].observeTransition(state, action, nextState, reward)
             
@@ -177,6 +183,7 @@ class CrawlerRobot:
                        params['LR'], 
                        params['Disc'],
                        params['PSteps'],
+                       params['Noise'],
                        self.direction,
                        state,
                        action,
@@ -192,6 +199,7 @@ class CrawlerRobot:
                           params['LR'], 
                           params['Disc'],
                           params['PSteps'],
+                          params['Noise'],
                           self.direction,
                           state,
                           action,
@@ -210,6 +218,25 @@ class CrawlerRobot:
     
         
     def learningCycle(self, opts, params):
+        '''
+            a learning cycle is a series of episodes using the same training
+            parameters. A learning cycle always starts with a new or loaded 
+            learner. The cycle loops through the episodes, toggling between
+            training mode and test mode
+            
+            Parameters
+            ----------
+            opts : argspace.Namespace
+                Command line arguments
+            params : class ParameterGrid
+                cointains current hyper parameters for this learning cycle
+                
+            Returns
+            -------
+            data_log_list : list
+                array of lists containing hyperparameters and state action values for 
+                each step. Empty list returned when logEnable=False
+        '''
 
         self.robotEnvironment.reset()
         self.direction = 'forward'
@@ -243,11 +270,13 @@ class CrawlerRobot:
             self.learner['forward'].setLearningRate(params['LR'])
             self.learner['forward'].setDiscount(params['Disc'])
             self.learner['forward'].setPlanningSteps(params['PSteps'])
+            self.learner['forward'].setUseRewardAvg(opts.rewardAvg)
         
             self.learner['reverse'].setEpsilon(params['Eps'])
             self.learner['reverse'].setLearningRate(params['LR'])
             self.learner['reverse'].setDiscount(params['Disc'])
             self.learner['reverse'].setPlanningSteps(params['PSteps'])
+            self.learner['reverse'].setUseRewardAvg(opts.rewardAvg)
         
             self.learner['forward'].startEpisode()
             self.learner['reverse'].startEpisode()
@@ -294,7 +323,8 @@ if __name__ == '__main__':
             'Eps' : opts.epsilon,
             'LR': opts.learningRate,
             'Disc' : opts.discount,
-            'PSteps' : opts.planningSteps
+            'PSteps' : opts.planningSteps,
+            'Noise' : opts.noise
             }
 
     grid = ParameterGrid(param_grid)
@@ -308,8 +338,9 @@ if __name__ == '__main__':
         data_log_list.extend(temp)
 
     # convert data log into Pandas DataFrame and display
-    cols = ['Episode', 'Step', 'LearningMode', 'Epsilon', 'LearningRate', 'Discount',
-            'Planning Steps', 'Direction', 'State', 'Action', 'Next State', 'Reward']
+    cols = ['Episode', 'Step', 'LearningMode', 'Epsilon', 'LearningRate', 
+            'Discount', 'Planning Steps', 'Noise', 'Direction', 'State', 
+            'Action', 'Next State', 'Reward']
     df = pd.DataFrame(data_log_list, columns=cols)
     
     if opts.saveLog:
