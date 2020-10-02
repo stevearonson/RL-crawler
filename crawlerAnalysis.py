@@ -127,7 +127,7 @@ def animateStates(qValues, steps, direction):
         overlay with the estimated optimal policy
         play back the steps as recorded in the log file
     '''
-    fig, ax = plt.subplots(figsize=(12,6))
+    fig, ax = plt.subplots(figsize=(6,6))
     plotQvalues(qValues, fig, ax)
     ax.set_title(direction + ' Value function and Policy')
     
